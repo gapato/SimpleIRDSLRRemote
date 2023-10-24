@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Simple IR DSLR Remote</string>
+    <string name="untested_suffix"> (untested)</string>
+    <string name="no_ir_found">No infrared blaster detected.</string>
+    <string name="ir_found">Ready. Do not forget: release mode → remote.</string>
+    <string name="delay_label">Delay (2s)</string>
+    <string name="quit_label">Quit</string>
+    <string name="camera_selector_label">Camera</string>
+    <string name="shutter_label">Shutter</string>
+</resources>

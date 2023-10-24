@@ -1,0 +1,2 @@
+This app allows you to remotely trigger the shutter of your digital camera using your phone's IR blaster.
+It should work for Canon, Minolta, Nikon, Olympus, Pentax and Sony cameras.

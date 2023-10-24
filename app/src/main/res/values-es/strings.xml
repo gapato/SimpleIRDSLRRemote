@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Simple IR DSLR Remote</string>
+    <string name="untested_suffix">" (no probado)"</string>
+    <string name="no_ir_found">Blaster infrarrojo no encotrado.</string>
+    <string name="ir_found">Modo di disparo → Disparo remoto</string>
+    <string name="delay_label">Disparo retardado (2s)</string>
+    <string name="quit_label">Salir</string>
+    <string name="camera_selector_label">Cámara</string>
+    <string name="shutter_label">Disparador</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Simple IR DSLR Remote</string>
+    <string name="untested_suffix">" (ungetestet)"</string>
+    <string name="no_ir_found">Kein Infrarot-Blaster erkannt.</string>
+    <string name="ir_found">Bereit. Nicht vergessen: Aufnahmebetriebsart → Fernauslösung</string>
+    <string name="delay_label">Vorlauf (2S)</string>
+    <string name="quit_label">Beenden</string>
+    <string name="camera_selector_label">Kamera</string>
+    <string name="shutter_label">Auslöser</string>
+</resources>
