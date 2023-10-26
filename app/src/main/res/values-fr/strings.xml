@@ -4,8 +4,9 @@
     <string name="untested_suffix">" (no testé)"</string>
     <string name="no_ir_found">Blaster infrarouge non détecté.</string>
     <string name="ir_found">Prêt. Ne pas oublier: mode déclenchement → télécommande</string>
-    <string name="delay_label">Délai (2s)</string>
+    <string name="interval_label">Interval (en secondes)</string>
     <string name="quit_label">Quitter</string>
     <string name="camera_selector_label">Appareil</string>
     <string name="shutter_label">Déclencheur</string>
+    <string name="cancel_label">Annuler</string>
 </resources>

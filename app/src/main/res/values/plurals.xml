@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="timelapse_shots_left">
+        <item quantity="one">%d shot left</item>
+        <item quantity="other">%d shots left</item>
+    </plurals>
+</resources>

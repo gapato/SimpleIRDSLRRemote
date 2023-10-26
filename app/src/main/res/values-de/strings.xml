@@ -4,8 +4,9 @@
     <string name="untested_suffix">" (ungetestet)"</string>
     <string name="no_ir_found">Kein Infrarot-Blaster erkannt.</string>
     <string name="ir_found">Bereit. Nicht vergessen: Aufnahmebetriebsart → Fernauslösung</string>
-    <string name="delay_label">Vorlauf (2S)</string>
+    <string name="interval_label">Vorlauf (2S)</string>
     <string name="quit_label">Beenden</string>
     <string name="camera_selector_label">Kamera</string>
     <string name="shutter_label">Auslöser</string>
+    <string name="cancel_label">Abbrechen</string>
 </resources>

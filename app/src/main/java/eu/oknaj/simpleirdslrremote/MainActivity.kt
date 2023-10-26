@@ -16,8 +16,7 @@ import android.content.Context
 import android.os.Bundle
 import android.hardware.ConsumerIrManager
 import android.content.pm.PackageManager
-import android.os.Handler
-import android.os.Looper
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults.buttonColors
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -40,40 +40,53 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import eu.oknaj.simpleirdslrremote.ui.theme.SimpleIRDSLRRemoteTheme
+import java.lang.Exception
+import java.util.Timer
+import java.util.TimerTask
+import kotlin.concurrent.timerTask
 
-val mCameras = listOf("Nikon",
-    "Canon" + R.string.untested_suffix,
-    "Minolta" + R.string.untested_suffix,
-    "Olympus" + R.string.untested_suffix,
-    "Pentax" + R.string.untested_suffix,
-    "Sony" + R.string.untested_suffix)
+var mCameras: Array<String> = arrayOf()
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        mCameras = arrayOf(
+            "Nikon",
+            "Canon" + getString(R.string.untested_suffix),
+            "Minolta" + getString(R.string.untested_suffix),
+            "Olympus" + getString(R.string.untested_suffix),
+            "Pentax" + getString(R.string.untested_suffix),
+            "Sony" + getString(R.string.untested_suffix)
+        )
+
         setContent {
             SimpleIRDSLRRemoteTheme {
                 // A surface container using the 'background' color from the theme
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     MainColumn(handleExit = { this.finishAndRemoveTask() })
                 }
             }
@@ -97,15 +110,75 @@ fun MainColumn(handleExit: () -> Unit) {
     }
 
     var camera by remember { mutableStateOf(mCameras[0]) }
-    var delay by remember { mutableStateOf(false) }
-    var shuttering by remember { mutableStateOf(false) }
+    var interval by remember { mutableStateOf("1") }
+    var nShots by remember { mutableStateOf("1") }
+    var remainingShots by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Greeting(hasIr)
+    var intervalTask by remember { mutableStateOf(timerTask{})}
+
+    val shutterTimer = Timer()
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp, 10.dp)
+    ) {
+        Greeting(hasIr, busy, remainingShots)
         if (hasIr) {
-            CameraSelector(camera, onChangeCamera = { camera = it})
-            ShutterModeSwitch(delay, onChangeMode = { delay = it })
-            ShutterButton(irManager, camera, delay, shuttering, onShutterOpen = { shuttering = true }, onShutterClose = { shuttering = false })
+            CameraSelector(camera, onChangeCamera = { camera = it })
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(0.dp, 10.dp)
+            ) {
+                IntegerField(
+                    label = stringResource(id = R.string.interval_label),
+                    interval,
+                    !busy,
+                    onChangeValue = { interval = it },
+                    modifier = Modifier
+                        .padding(0.dp, 0.dp, 5.dp, 0.dp)
+                        .fillMaxWidth(0.5f)
+                )
+                IntegerField(
+                    label = stringResource(id = R.string.n_shots_label),
+                    nShots,
+                    !busy,
+                    onChangeValue = { nShots = it },
+                    modifier = Modifier.padding(5.dp, 0.dp, 0.dp, 0.dp)
+                )
+            }
+            if (busy) {
+                CancelButton(onClick = {
+                    Log.d("CancelButton", "canceling")
+                    intervalTask.cancel()
+                    remainingShots = 0
+                    busy = false
+                })
+            } else {
+                ShutterButton(
+                    onClick = {
+                        var intervalInt = 1
+                        remainingShots = 1
+
+                        try {
+                            intervalInt = interval.toInt()
+                            remainingShots = nShots.toInt()
+                        } catch (_: Exception) {
+                        }
+                        remainingShots = nShots.toInt()
+                        shutterAction(irManager,
+                            camera,
+                            remainingShots,
+                            intervalInt,
+                            afterShutter = { remainingShots-- },
+                            timer = shutterTimer,
+                            setIntervalTask = { it: TimerTask -> intervalTask = it },
+                            busyOn = { busy = true },
+                            busyOff = { busy = false })
+                    },
+                )
+            }
         }
         Spacer(Modifier.height(40.dp))
         ExitButton(handleExitClick = handleExit)
@@ -113,42 +186,56 @@ fun MainColumn(handleExit: () -> Unit) {
 }
 
 @Composable
-fun Greeting(hasIr: Boolean, modifier: Modifier = Modifier) {
+fun Greeting(
+    hasIr: Boolean,
+    shuttering: Boolean,
+    remainingShots: Int,
+    modifier: Modifier = Modifier
+) {
     var headingText = stringResource(id = R.string.no_ir_found)
 
     if (hasIr) {
         headingText = stringResource(id = R.string.ir_found)
     }
 
+    if (shuttering && remainingShots > 0) {
+        headingText =
+            pluralStringResource(R.plurals.timelapse_shots_left, remainingShots, remainingShots)
+    }
+
     Text(
-            text = headingText,
-            modifier = modifier.padding(10.dp)
+        text = headingText,
+        modifier = modifier
+            //.padding(10.dp)
+            .fillMaxWidth()
+    )
+
+}
+
+@Composable
+fun IntegerField(
+    label: String,
+    value: String,
+    enabled: Boolean,
+    onChangeValue: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        enabled = enabled,
+        onValueChange = { newValue: String -> onChangeValue(newValue) },
+        label = { Text(label) },
+        modifier = modifier
     )
 }
 
 @Composable
-fun ShutterModeSwitch(delay: Boolean, onChangeMode: (Boolean) -> Unit) {
-    Row(horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+fun ShutterButton(onClick: () -> Unit) {
+
+    Button(
+        onClick = { onClick() },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp, 0.dp)) {
-        Text(text = stringResource(id = R.string.delay_label))
-        Switch(
-            checked = delay,
-            onCheckedChange = { it:Boolean -> onChangeMode(it) }
-        )
-    }
-}
-
-@Composable
-fun ShutterButton(irManager: ConsumerIrManager, camera: String, delay:Boolean,
-                  shuttering: Boolean, onShutterOpen: () -> Unit, onShutterClose: () -> Unit) {
-    Button(
-        onClick = { shutterAction(irManager = irManager, camera, delay, onShutterOpen, onShutterClose) },
-        enabled = !shuttering,
-        modifier = Modifier
-            .fillMaxWidth(0.9F)
             .fillMaxHeight(0.8F),
         shape = RoundedCornerShape(10.dp)
     ) {
@@ -156,23 +243,65 @@ fun ShutterButton(irManager: ConsumerIrManager, camera: String, delay:Boolean,
     }
 }
 
-fun shutterAction(irManager: ConsumerIrManager, camera: String, delay:Boolean,
-                  onShutterOpen: () -> Unit, onShutterClose: () -> Unit) {
+@Composable
+fun CancelButton(onClick: () -> Unit) {
+
+    val colors = buttonColors(containerColor = Color.Red)
+
+    Button(
+        onClick = onClick,
+        colors = colors,
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.8F),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Text(text = stringResource(id = R.string.cancel_label))
+    }
+}
+
+// move this up to MainColumn
+fun shutterAction(
+    irManager: ConsumerIrManager, camera: String, totalShots: Int, interval: Int,
+    afterShutter: () -> Unit, timer: Timer, busyOn: () -> Unit, busyOff: () -> Unit,
+    setIntervalTask: (TimerTask) -> Unit
+) {
     val idx = mCameras.indexOf(camera)
 
-    val shutterFunctions = arrayOf(::shutterNikon, ::shutterCanon, ::shutterMinolta, ::shutterOlympus, ::shutterPentax, ::shutterSony)
+    val shutterFunctions = arrayOf(
+        ::shutterNikon,
+        ::shutterCanon,
+        ::shutterMinolta,
+        ::shutterOlympus,
+        ::shutterPentax,
+        ::shutterSony
+    )
+
+    val period = 1000 * interval.toLong()
 
     if (idx >= 0) {
-        if (delay) {
-            onShutterOpen()
-            Handler(Looper.getMainLooper()).postDelayed({
+        if (totalShots > 1 || interval > 1) {
+            busyOn()
+            var nShots = 0
+            //timer.scheduleAtFixedRate(timerTask {
+            val intervalTask = timerTask {
                 shutterFunctions[idx](irManager)
-                onShutterClose()
-            }, 2000)
+                afterShutter()
+                Log.d("shutterAction", "nShots: $nShots")
+                Log.d("shutterAction", "period: $period")
+                nShots += 1
+                if (nShots == totalShots) {
+                    busyOff()
+                    Log.d("shutterAction", "reached $nShots/$totalShots")
+                    timer.cancel()
+                }
+            }
+            timer.schedule(intervalTask, period, period)
+            setIntervalTask(intervalTask)
         } else {
-            onShutterOpen()
+            busyOn()
             shutterFunctions[idx](irManager)
-            onShutterClose()
+            busyOff()
         }
 
     }
@@ -189,14 +318,14 @@ fun ExitButton(handleExitClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CameraSelector(camera:String, onChangeCamera: (String) -> Unit) {
+fun CameraSelector(camera: String, onChangeCamera: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    var mTextFieldSize by remember { mutableStateOf(Size.Zero)}
+    var mTextFieldSize by remember { mutableStateOf(Size.Zero) }
 
 // We want to react on tap/press on TextField to show menu
     ExposedDropdownMenuBox(
         expanded = expanded,
-        modifier = Modifier.padding(20.dp, 0.dp),
+        modifier = Modifier.padding(0.dp, 0.dp),
         onExpandedChange = {
             expanded = !expanded
         },
@@ -211,7 +340,7 @@ fun CameraSelector(camera:String, onChangeCamera: (String) -> Unit) {
                     expanded = expanded
                 )
             },
-            colors = ExposedDropdownMenuDefaults.textFieldColors(),
+            //colors = ExposedDropdownMenuDefaults.textFieldColors(),
             modifier = Modifier
                 .menuAnchor()
                 .fillMaxWidth()
@@ -226,7 +355,7 @@ fun CameraSelector(camera:String, onChangeCamera: (String) -> Unit) {
             onDismissRequest = {
                 expanded = false
             },
-            modifier = Modifier.width(with(LocalDensity.current){mTextFieldSize.width.toDp()})
+            modifier = Modifier.width(with(LocalDensity.current) { mTextFieldSize.width.toDp() })
         ) {
             mCameras.forEach { selectionOption ->
                 DropdownMenuItem(
@@ -244,6 +373,9 @@ fun CameraSelector(camera:String, onChangeCamera: (String) -> Unit) {
 
 // IR frequencies and patterns from Sebastian Setz
 // http://sebastian.setz.name/arduino/my-libraries/multiCameraIrControl
+
+// Other potential sources sources:
+// https://github.com/krupski/sony_ir/blob/master/sony_ir.cpp (Sony, LGPL)
 
 fun shutterNikon(irManager: ConsumerIrManager) {
     //val pattern = intArrayOf(2000, 27830, 500, 1500, 500, 3500, 500)
@@ -266,7 +398,40 @@ fun shutterPentax(irManager: ConsumerIrManager) {
 
 fun shutterOlympus(irManager: ConsumerIrManager) {
     // seq has length 32
-    val seq: IntArray = intArrayOf(0,1,1,0,0,0,0,1,1,1,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1)
+    val seq: IntArray = intArrayOf(
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    )
 
     val pattern = Array(67) { 600 }
     pattern[0] = 8972
@@ -275,7 +440,7 @@ fun shutterOlympus(irManager: ConsumerIrManager) {
 
     // set the variable durations for LOW
     for (i in seq.indices) {
-        pattern[3 + 2*i] = if (seq[i] == 1) 1600 else 488
+        pattern[3 + 2 * i] = if (seq[i] == 1) 1600 else 488
     }
 
     irManager.transmit(40000, pattern.toIntArray())
@@ -283,7 +448,41 @@ fun shutterOlympus(irManager: ConsumerIrManager) {
 
 fun shutterMinolta(irManager: ConsumerIrManager) {
     // seq has length 33
-    val seq: IntArray = intArrayOf(0,0,1,0,1,1,0,0,0,1,0,1,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1)
+    val seq: IntArray = intArrayOf(
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+    )
 
     val pattern = Array(68) { 456 }
     pattern[0] = 3750
@@ -291,7 +490,7 @@ fun shutterMinolta(irManager: ConsumerIrManager) {
 
     // set the variable durations for LOW
     for (i in seq.indices) {
-        pattern[2 + 2*i + 1] = if (seq[i] == 1) 1430 else 487
+        pattern[2 + 2 * i + 1] = if (seq[i] == 1) 1430 else 487
     }
 
     irManager.transmit(38000, pattern.toIntArray())
@@ -299,7 +498,7 @@ fun shutterMinolta(irManager: ConsumerIrManager) {
 
 fun shutterSony(irManager: ConsumerIrManager) {
     // seq has length 20
-    val seq: IntArray = intArrayOf(1,1,1,0,1,1,0,0,1,0,1,1,1,0,0,0,1,1,1,1)
+    val seq: IntArray = intArrayOf(1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1)
 
     var pattern = Array(43) { 650 }
     pattern[0] = 2320
@@ -307,7 +506,7 @@ fun shutterSony(irManager: ConsumerIrManager) {
 
     // set the variable durations for HIGH
     for (i in seq.indices) {
-        pattern[2 + 2*i] = if (seq[i] == 1) 1175 else 575
+        pattern[2 + 2 * i] = if (seq[i] == 1) 1175 else 575
     }
 
     pattern[42] = 10000

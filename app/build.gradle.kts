@@ -4,6 +4,7 @@ plugins {
 }
 
 android {
+
     namespace = "eu.oknaj.simpleirdslrremote"
     compileSdk = 34
 
@@ -11,8 +12,8 @@ android {
         applicationId = "eu.oknaj.simpleirdslrremote"
         minSdk = 24
         targetSdk = 33
-        versionCode = 4
-        versionName = "0.1.3"
+        versionCode = 2
+        versionName = "0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
