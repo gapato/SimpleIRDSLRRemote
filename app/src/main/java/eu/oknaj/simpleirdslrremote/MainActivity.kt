@@ -418,7 +418,6 @@ fun CameraSelector(camera: String, onChangeCamera: (String) -> Unit, enabled: Bo
                     expanded = expanded
                 )
             },
-            //colors = ExposedDropdownMenuDefaults.textFieldColors(),
             modifier = Modifier
                 .menuAnchor()
                 .fillMaxWidth()
@@ -456,8 +455,8 @@ fun CameraSelector(camera: String, onChangeCamera: (String) -> Unit, enabled: Bo
 // https://github.com/krupski/sony_ir/blob/master/sony_ir.cpp (Sony, LGPL)
 
 fun shutterNikon(irManager: ConsumerIrManager) {
-    //val pattern = intArrayOf(2000, 27830, 500, 1500, 500, 3500, 500)
-    val pattern = intArrayOf(2000, 27830, 390, 1580, 410, 3580, 400)
+    val pattern = intArrayOf(2000, 27830, 500, 1500, 500, 3500, 500)
+    //val pattern = intArrayOf(2000, 27830, 400, 1580, 400, 3580, 400)
     irManager.transmit(38000, pattern)
 }
 
