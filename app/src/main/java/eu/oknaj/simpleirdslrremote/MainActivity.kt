@@ -202,6 +202,7 @@ fun MainColumn(handleExit: () -> Unit) {
         }
         Spacer(Modifier.height(40.dp))
         ExitButton(handleExitClick = handleExit)
+        VersionFooter()
     }
 }
 
@@ -227,6 +228,12 @@ fun Greeting(
         modifier = modifier
     )
 
+}
+
+@Composable
+fun VersionFooter(){
+    Text(text = "v" + BuildConfig.VERSION_NAME, fontSize=10.sp, color=Color.Gray,
+        textAlign = TextAlign.Right, modifier = Modifier.fillMaxWidth().padding(10.dp, 0.dp))
 }
 
 @Composable
@@ -591,6 +598,7 @@ fun shutterSony(irManager: ConsumerIrManager) {
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
+
     SimpleIRDSLRRemoteTheme {
         // A surface container using the 'background' color from the theme
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
