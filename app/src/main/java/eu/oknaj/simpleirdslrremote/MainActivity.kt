@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults.buttonColors
 import androidx.compose.material3.DropdownMenuItem
@@ -45,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,14 +58,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import eu.oknaj.simpleirdslrremote.ui.theme.SimpleIRDSLRRemoteTheme
 import java.lang.Exception
+import java.lang.Float.max
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.concurrent.timerTask
+import kotlin.math.ceil
 
 var mCameras: Array<String> = arrayOf()
 
@@ -113,9 +121,11 @@ fun MainColumn(handleExit: () -> Unit) {
     var interval by remember { mutableStateOf("1") }
     var nShots by remember { mutableStateOf("1") }
     var remainingShots by remember { mutableIntStateOf(0) }
+    var remainingSeconds by remember { mutableFloatStateOf(0F) }
     var busy by remember { mutableStateOf(false) }
 
     var intervalTask by remember { mutableStateOf(timerTask{})}
+    var tickTask by remember { mutableStateOf(timerTask{})}
 
     val shutterTimer = Timer()
 
@@ -126,15 +136,16 @@ fun MainColumn(handleExit: () -> Unit) {
     ) {
         Greeting(hasIr, busy, remainingShots)
         if (hasIr) {
-            CameraSelector(camera, onChangeCamera = { camera = it })
+            CameraSelector(camera, onChangeCamera = { camera = it }, !busy)
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.padding(0.dp, 10.dp)
             ) {
                 IntegerField(
                     label = stringResource(id = R.string.interval_label),
-                    interval,
-                    !busy,
+                    shortLabel = stringResource(id = R.string.interval_label_short),
+                    value = interval,
+                    enabled = !busy,
                     onChangeValue = { interval = it },
                     modifier = Modifier
                         .padding(0.dp, 0.dp, 5.dp, 0.dp)
@@ -142,21 +153,27 @@ fun MainColumn(handleExit: () -> Unit) {
                 )
                 IntegerField(
                     label = stringResource(id = R.string.n_shots_label),
-                    nShots,
-                    !busy,
+                    value = nShots,
+                    enabled =!busy,
                     onChangeValue = { nShots = it },
                     modifier = Modifier.padding(5.dp, 0.dp, 0.dp, 0.dp)
                 )
             }
             if (busy) {
-                CancelButton(onClick = {
-                    Log.d("CancelButton", "canceling")
-                    intervalTask.cancel()
-                    remainingShots = 0
-                    busy = false
-                })
+                CancelButton(
+                    onClick = {
+                        Log.d("CancelButton", "canceling")
+                        intervalTask.cancel()
+                        tickTask.cancel()
+                        remainingShots = 0
+                        busy = false
+                    },
+                    remainingShots = remainingShots,
+                    remainingSeconds = remainingSeconds
+                )
             } else {
                 ShutterButton(
+                    nShots = nShots,
                     onClick = {
                         var intervalInt = 1
                         remainingShots = 1
@@ -174,6 +191,9 @@ fun MainColumn(handleExit: () -> Unit) {
                             afterShutter = { remainingShots-- },
                             timer = shutterTimer,
                             setIntervalTask = { it: TimerTask -> intervalTask = it },
+                            setTickTask = { it: TimerTask -> tickTask = it },
+                            resetTick = { remainingSeconds = intervalInt.toFloat() },
+                            tick = { remainingSeconds = max(0F, remainingSeconds - 0.1F) },
                             busyOn = { busy = true },
                             busyOff = { busy = false })
                     },
@@ -199,15 +219,12 @@ fun Greeting(
     }
 
     if (shuttering && remainingShots > 0) {
-        headingText =
-            pluralStringResource(R.plurals.timelapse_shots_left, remainingShots, remainingShots)
+        headingText = stringResource(id = R.string.intervalometer_running)
     }
 
     Text(
         text = headingText,
         modifier = modifier
-            //.padding(10.dp)
-            .fillMaxWidth()
     )
 
 }
@@ -218,35 +235,58 @@ fun IntegerField(
     value: String,
     enabled: Boolean,
     onChangeValue: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    shortLabel: String = "",
+    ) {
     OutlinedTextField(
         value = value,
         enabled = enabled,
-        onValueChange = { newValue: String -> onChangeValue(newValue) },
+        onValueChange = { newValue: String -> onChangeValue(newValue.filter { it.isDigit() }) },
         label = { Text(label) },
-        modifier = modifier
+        placeholder = { Text(if (shortLabel == "") label else shortLabel)},
+        modifier = modifier,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )
 }
 
 @Composable
-fun ShutterButton(onClick: () -> Unit) {
+fun ShutterButton(onClick: () -> Unit, nShots: String) {
+
+    var nShotsInt = 0
+    try {
+        nShotsInt = nShots.toInt()
+    } catch (_: Exception) {}
+
+    var label = stringResource(id = R.string.shutter_label)
+
+    if (nShotsInt > 1) {
+        label = stringResource(id = R.string.intervalometer_label)
+    }
+
+    val textStyle = TextStyle(
+        textAlign = TextAlign.Center,
+        lineHeight = 45.sp
+    )
 
     Button(
+        enabled = nShotsInt > 0,
         onClick = { onClick() },
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.8F),
         shape = RoundedCornerShape(10.dp)
     ) {
-        Text(text = stringResource(id = R.string.shutter_label))
+        Text(text = label,
+            style = textStyle,
+            fontSize = 40.sp)
     }
 }
 
 @Composable
-fun CancelButton(onClick: () -> Unit) {
+fun CancelButton(onClick: () -> Unit, remainingShots: Int, remainingSeconds: Float) {
 
     val colors = buttonColors(containerColor = Color.Red)
+    val remainingSecondsInt = ceil(remainingSeconds).toInt()
 
     Button(
         onClick = onClick,
@@ -256,7 +296,22 @@ fun CancelButton(onClick: () -> Unit) {
             .fillMaxHeight(0.8F),
         shape = RoundedCornerShape(10.dp)
     ) {
-        Text(text = stringResource(id = R.string.cancel_label))
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = stringResource(id = R.string.cancel_label), fontSize = 40.sp)
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = pluralStringResource(
+                    R.plurals.timelapse_shots_left,
+                    remainingShots,
+                    remainingShots
+                ) +
+                        ", " + pluralStringResource(
+                    R.plurals.timelapse_seconds_left,
+                    remainingSecondsInt,
+                    remainingSecondsInt
+                    )
+            )
+        }
     }
 }
 
@@ -264,7 +319,8 @@ fun CancelButton(onClick: () -> Unit) {
 fun shutterAction(
     irManager: ConsumerIrManager, camera: String, totalShots: Int, interval: Int,
     afterShutter: () -> Unit, timer: Timer, busyOn: () -> Unit, busyOff: () -> Unit,
-    setIntervalTask: (TimerTask) -> Unit
+    setIntervalTask: (TimerTask) -> Unit, resetTick: () -> Unit, tick: () -> Unit,
+    setTickTask: (TimerTask) -> Unit
 ) {
     val idx = mCameras.indexOf(camera)
 
@@ -283,21 +339,35 @@ fun shutterAction(
         if (totalShots > 1 || interval > 1) {
             busyOn()
             var nShots = 0
-            //timer.scheduleAtFixedRate(timerTask {
+
+            var tickTask = timerTask { tick() }
+
             val intervalTask = timerTask {
+
+                tickTask.cancel()
+                resetTick()
+                tickTask = timerTask { tick() }
+                timer.scheduleAtFixedRate(tickTask, 0, 100)
+                setTickTask(tickTask)
+
                 shutterFunctions[idx](irManager)
                 afterShutter()
                 Log.d("shutterAction", "nShots: $nShots")
                 Log.d("shutterAction", "period: $period")
                 nShots += 1
+
                 if (nShots == totalShots) {
                     busyOff()
                     Log.d("shutterAction", "reached $nShots/$totalShots")
                     timer.cancel()
+                    tickTask.cancel()
                 }
             }
-            timer.schedule(intervalTask, period, period)
+            resetTick()
+            timer.scheduleAtFixedRate(intervalTask, period, period)
+            timer.scheduleAtFixedRate(tickTask, 0, 100)
             setIntervalTask(intervalTask)
+            setTickTask(tickTask)
         } else {
             busyOn()
             shutterFunctions[idx](irManager)
@@ -318,7 +388,7 @@ fun ExitButton(handleExitClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CameraSelector(camera: String, onChangeCamera: (String) -> Unit) {
+fun CameraSelector(camera: String, onChangeCamera: (String) -> Unit, enabled: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
     var mTextFieldSize by remember { mutableStateOf(Size.Zero) }
 
@@ -332,6 +402,7 @@ fun CameraSelector(camera: String, onChangeCamera: (String) -> Unit) {
     ) {
         OutlinedTextField(
             readOnly = true,
+            enabled = enabled,
             value = camera,
             onValueChange = { },
             label = { Text(stringResource(id = R.string.camera_selector_label)) },

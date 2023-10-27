@@ -4,9 +4,10 @@
     <string name="untested_suffix">" (non testato)"</string>
     <string name="no_ir_found">Blaster infrarosso non trovato.</string>
     <string name="ir_found">Modo di scatto → Comando a distanza</string>
-    <string name="interval_label">Scatto ritardato (2s)</string>
+    <string name="interval_label">Intervallo (in secondi)</string>
     <string name="quit_label">Chuidi</string>
     <string name="camera_selector_label">Fotocamera</string>
     <string name="shutter_label">Scatto</string>
     <string name="cancel_label">Annullare</string>
+    <string name="interval_label_short">Intervallo</string>
 </resources>

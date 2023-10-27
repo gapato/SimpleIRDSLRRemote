@@ -10,5 +10,7 @@
     <string name="shutter_label">Shutter</string>
     <string name="cancel_label">Cancel</string>
     <string name="n_shots_label">Number of shots</string>
-    <string name="shots_left">" shot(s) left."</string>
+    <string name="intervalometer_running">Intervalometer running</string>
+    <string name="intervalometer_label">Start intervalometer</string>
+    <string name="interval_label_short">Interval</string>
 </resources>

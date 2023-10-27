@@ -4,9 +4,10 @@
     <string name="untested_suffix">" (no probado)"</string>
     <string name="no_ir_found">Blaster infrarrojo no encotrado.</string>
     <string name="ir_found">Modo di disparo → Disparo remoto</string>
-    <string name="interval_label">Disparo retardado (2s)</string>
+    <string name="interval_label">Intervalo (en secundas)</string>
     <string name="quit_label">Salir</string>
     <string name="camera_selector_label">Cámara</string>
     <string name="shutter_label">Disparador</string>
     <string name="cancel_label">Cancelar</string>
+    <string name="interval_label_short">Intervalo</string>
 </resources>

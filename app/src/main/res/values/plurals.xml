@@ -4,4 +4,8 @@
         <item quantity="one">%d shot left</item>
         <item quantity="other">%d shots left</item>
     </plurals>
+    <plurals name="timelapse_seconds_left">
+        <item quantity="one">%d second to next shot</item>
+        <item quantity="other">%d seconds to next shot</item>
+    </plurals>
 </resources>
