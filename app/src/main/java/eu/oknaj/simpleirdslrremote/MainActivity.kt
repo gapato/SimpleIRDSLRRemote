@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -199,8 +198,18 @@ fun MainColumn(handleExit: () -> Unit) {
                     },
                 )
             }
+            Spacer(Modifier.height(5.dp))
+            ShutterButton(
+                nShots = "0",
+                onClick = {
+                    shutterAction(irManager,
+                        camera,
+                        busyOn = { busy = true },
+                        busyOff = { busy = false })
+                },
+            )
         }
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(200.dp))
         ExitButton(handleExitClick = handleExit)
         VersionFooter()
     }
@@ -259,14 +268,14 @@ fun IntegerField(
 @Composable
 fun ShutterButton(onClick: () -> Unit, nShots: String) {
 
-    var nShotsInt = 0
+    var nShotsInt = -1
     try {
         nShotsInt = nShots.toInt()
     } catch (_: Exception) {}
 
     var label = stringResource(id = R.string.shutter_label)
 
-    if (nShotsInt > 1) {
+    if (nShotsInt > 0) {
         label = stringResource(id = R.string.intervalometer_label)
     }
 
@@ -276,11 +285,11 @@ fun ShutterButton(onClick: () -> Unit, nShots: String) {
     )
 
     Button(
-        enabled = nShotsInt > 0,
+        enabled = nShotsInt != -1 && nShotsInt != 1,
         onClick = { onClick() },
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.8F),
+            .height(160.dp),
         shape = RoundedCornerShape(10.dp)
     ) {
         Text(text = label,
@@ -300,7 +309,7 @@ fun CancelButton(onClick: () -> Unit, remainingShots: Int, remainingSeconds: Flo
         colors = colors,
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.8F),
+            .height(160.dp),
         shape = RoundedCornerShape(10.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -322,7 +331,29 @@ fun CancelButton(onClick: () -> Unit, remainingShots: Int, remainingSeconds: Flo
     }
 }
 
-// move this up to MainColumn
+
+fun shutterAction(
+    irManager: ConsumerIrManager, camera: String,
+    busyOn: () -> Unit, busyOff: () -> Unit
+) {
+    val idx = mCameras.indexOf(camera)
+
+    val shutterFunctions = arrayOf(
+        ::shutterNikon,
+        ::shutterCanon,
+        ::shutterMinolta,
+        ::shutterOlympus,
+        ::shutterPentax,
+        ::shutterSony
+    )
+
+    if (idx >= 0) {
+        busyOn()
+        shutterFunctions[idx](irManager)
+        busyOff()
+    }
+}
+
 fun shutterAction(
     irManager: ConsumerIrManager, camera: String, totalShots: Int, interval: Int,
     afterShutter: () -> Unit, timer: Timer, busyOn: () -> Unit, busyOff: () -> Unit,
